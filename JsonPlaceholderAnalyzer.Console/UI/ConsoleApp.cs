@@ -1,5 +1,6 @@
 using JsonPlaceholderAnalyzer.Application.Services;
 using JsonPlaceholderAnalyzer.Console.Handlers;
+using JsonPlaceholderAnalyzer.Domain.Common;
 
 namespace JsonPlaceholderAnalyzer.Console.UI;
 
@@ -1057,31 +1058,125 @@ public class ConsoleApp
     #region Config Menu
 
     private Task<bool> HandleConfigMenuAsync()
+{
+    var inSubmenu = true;
+    while (inSubmenu)
     {
-        var inSubmenu = true;
-        while (inSubmenu)
-        {
-            ConsoleHelper.Clear();
-            ConsoleHelper.WriteHeader("Configuración");
-            
-            var option = ConsoleHelper.ShowMenu("Configuración",
-                $"Modo verbose: {(_eventHandlers.VerboseMode ? "ON" : "OFF")}",
-                "Recargar datos",
-                "Acerca de",
-                "Volver al menú principal"
-            );
+        ConsoleHelper.Clear();
+        ConsoleHelper.WriteHeader("Configuración");
+        
+        var option = ConsoleHelper.ShowMenu("Configuración",
+            $"Modo verbose: {(_eventHandlers.VerboseMode ? "ON" : "OFF")}",
+            "Recargar datos",
+            "Demo de Result<T>",  // ← NUEVO
+            "Acerca de",
+            "Volver al menú principal"
+        );
 
-            inSubmenu = option switch
-            {
-                0 => ToggleVerboseMode(),
-                1 => ReloadDataAsync().GetAwaiter().GetResult(),
-                2 => ShowAbout(),
-                3 => false,
-                _ => true
-            };
-        }
-        return Task.FromResult(true);
+        inSubmenu = option switch
+        {
+            0 => ToggleVerboseMode(),
+            1 => ReloadDataAsync().GetAwaiter().GetResult(),
+            2 => ShowResultDemo(),  // ← NUEVO
+            3 => ShowAbout(),
+            4 => false,
+            _ => true
+        };
     }
+    return Task.FromResult(true);
+}
+
+private bool ShowResultDemo()
+{
+    ConsoleHelper.Clear();
+    ConsoleHelper.WriteHeader("Demo de Result<T>");
+    
+    // Demo 1: Resultados exitosos
+    ConsoleHelper.WriteSubHeader("1. Creación de Results");
+    
+    var success = Result<int>.Success(42);
+    System.Console.WriteLine($"    Result<int>.Success(42): {success}");
+    
+    var failure = Result<int>.Failure("Something went wrong");
+    System.Console.WriteLine($"    Result<int>.Failure(...): {failure}");
+    
+    var notFound = Result<string>.NotFound("User not found");
+    System.Console.WriteLine($"    Result<string>.NotFound(...): {notFound}");
+    
+    // Demo 2: Pattern Matching
+    ConsoleHelper.WriteSubHeader("2. Pattern Matching con Result");
+    
+    Result<string> testResult = Result<string>.Success("Hello World");
+    
+    var message = testResult switch
+    {
+        { IsSuccess: true, Value: var v } => $"Success: {v}",
+        { ErrorType: ErrorType.NotFound } => "Not found",
+        { IsFailure: true, Error: var e } => $"Error: {e}",
+        _ => "Unknown"
+    };
+    System.Console.WriteLine($"    Pattern match result: {message}");
+    
+    // Demo 3: Encadenamiento funcional
+    ConsoleHelper.WriteSubHeader("3. Encadenamiento con Map/Bind");
+    
+    var chainResult = Result<int>.Success(5)
+        .Map(x => x * 2)           // 10
+        .Map(x => x + 3)           // 13
+        .Ensure(x => x > 10, "Must be > 10")  // Pasa
+        .Map(x => $"Result is {x}");  // "Result is 13"
+    
+    System.Console.WriteLine($"    Cadena: 5 -> *2 -> +3 -> ensure > 10 -> format");
+    System.Console.WriteLine($"    Resultado: {chainResult}");
+    
+    // Demo 4: Match
+    ConsoleHelper.WriteSubHeader("4. Match para manejo");
+    
+    chainResult.Match(
+        onSuccess: value => ConsoleHelper.WriteSuccess($"Éxito: {value}"),
+        onFailure: error => ConsoleHelper.WriteError($"Fallo: {error}")
+    );
+    
+    // Demo 5: Recuperación de errores
+    ConsoleHelper.WriteSubHeader("5. Recuperación de errores");
+    
+    var errorResult = Result<string>.NotFound("User not found")
+        .Recover(ErrorType.NotFound, _ => "Guest User");
+    
+    System.Console.WriteLine($"    Error original: NotFound");
+    System.Console.WriteLine($"    Después de Recover: {errorResult}");
+    
+    // Demo 6: Combinación
+    ConsoleHelper.WriteSubHeader("6. Combinación de Results");
+    
+    var r1 = Result<int>.Success(10);
+    var r2 = Result<string>.Success("hello");
+    var combined = r1.Combine(r2);
+    
+    System.Console.WriteLine($"    Result 1: {r1}");
+    System.Console.WriteLine($"    Result 2: {r2}");
+    System.Console.WriteLine($"    Combined: {combined}");
+    
+    // Demo 7: Visualización de errores por tipo
+    ConsoleHelper.WriteSubHeader("7. Errores por tipo");
+    
+    var errors = new[]
+    {
+        Result<int>.Failure("General error"),
+        Result<int>.NotFound("Resource not found"),
+        Result<int>.ValidationError("Invalid input"),
+        Result<int>.Unauthorized("Access denied"),
+        Result<int>.Failure(new TimeoutException("Timeout"), ErrorType.Timeout)
+    };
+    
+    foreach (var error in errors)
+    {
+        ConsoleHelper.WriteResult(error);
+    }
+    
+    ConsoleHelper.Pause();
+    return true;
+}
 
     private bool ToggleVerboseMode()
     {

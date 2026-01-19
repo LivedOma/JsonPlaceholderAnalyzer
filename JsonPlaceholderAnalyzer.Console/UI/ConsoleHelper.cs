@@ -1,3 +1,5 @@
+using JsonPlaceholderAnalyzer.Domain.Common;
+
 namespace JsonPlaceholderAnalyzer.Console.UI;
 
 /// <summary>
@@ -159,4 +161,55 @@ public static class ConsoleHelper
             WriteError("Opción inválida. Intente de nuevo.");
         }
     }
+
+    // Agregar al final de la clase ConsoleHelper:
+
+    public static void WriteResult<T>(Result<T> result, Func<T, string>? successMessage = null)
+    {
+        if (result.IsSuccess)
+        {
+            var message = successMessage?.Invoke(result.Value!) ?? "Operation successful";
+            WriteSuccess(message);
+        }
+        else
+        {
+            // Color según tipo de error usando Pattern Matching
+            var (color, icon) = result.ErrorType switch
+            {
+                ErrorType.NotFound => (ConsoleColor.Yellow, "🔍"),
+                ErrorType.Validation => (ConsoleColor.Magenta, "⚠"),
+                ErrorType.Unauthorized => (ConsoleColor.Red, "🔒"),
+                ErrorType.Network => (ConsoleColor.DarkYellow, "🌐"),
+                ErrorType.Timeout => (ConsoleColor.DarkYellow, "⏱"),
+                ErrorType.Exception => (ConsoleColor.DarkRed, "💥"),
+                _ => (ConsoleColor.Red, "✗")
+            };
+
+            System.Console.ForegroundColor = color;
+            System.Console.WriteLine($"  {icon} [{result.ErrorType}] {result.Error}");
+            System.Console.ResetColor();
+        }
+    }
+
+    public static void WriteResultDetails<T>(Result<T> result)
+    {
+        System.Console.WriteLine();
+        System.Console.WriteLine($"    IsSuccess: {result.IsSuccess}");
+        System.Console.WriteLine($"    ErrorType: {result.ErrorType}");
+        
+        if (result.IsSuccess)
+        {
+            System.Console.WriteLine($"    Value: {result.Value}");
+        }
+        else
+        {
+            System.Console.WriteLine($"    Error: {result.Error}");
+            if (result.Exception != null)
+            {
+                System.Console.WriteLine($"    Exception: {result.Exception.GetType().Name}");
+            }
+        }
+    }
+
 }
+
