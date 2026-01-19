@@ -1,0 +1,36 @@
+## .NET
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+## Visual Studio
+.vs/
+*.suo
+*.cache
+
+## Rider
+.idea/
+
+## User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+## NuGet
+*.nupkg
+**/packages/*
+!**/packages/build/
+
+## Logs
+*.log
+Logs/
