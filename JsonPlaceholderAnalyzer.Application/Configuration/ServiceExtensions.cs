@@ -14,6 +14,7 @@ public static class ServiceExtensions
         services.AddScoped<DataFilterService>();
         services.AddScoped<ResponseMappingService>();
         services.AddScoped<QueryService>();
+        services.AddScoped<AnalyticsService>();  // ← NUEVO
         
         // Servicios de entidades
         services.AddScoped<UserService>();
