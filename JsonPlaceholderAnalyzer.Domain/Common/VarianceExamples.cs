@@ -67,22 +67,47 @@ public static class VarianceExamples
     }
 
     /// <summary>
-    /// Ejemplo práctico con nuestras interfaces del dominio.
+    /// LIMITACIÓN IMPORTANTE: Clases genéricas no pueden ser covariantes/contravariantes.
+    /// Solo las INTERFACES y DELEGADOS pueden usar 'in' y 'out'.
+    /// 
+    /// Por esto, nuestra clase Result<T> es INVARIANTE y no podemos hacer:
+    ///   interface IReadOnlyRepository<out T> { Task<Result<T>> GetAsync(); }
+    /// 
+    /// El error sería: "Varianza no válida: Result<T> no es covariante"
     /// </summary>
-    public static void DomainVarianceExample()
+    public static void ClassVarianceLimitation()
     {
-        // Ejemplo de cómo se usaría en nuestra aplicación:
+        // Result<T> es una CLASE, no una interfaz
+        // Las clases son siempre INVARIANTES en C#
         
-        // IReadOnlyRepository es covariante
-        // IReadOnlyRepository<Post> postRepo = GetPostRepository();
-        // IReadOnlyRepository<EntityBase<int>> baseRepo = postRepo; // ✓ Válido
+        // Esto NO compila:
+        // Result<string> stringResult = Result<string>.Success("hello");
+        // Result<object> objectResult = stringResult; // ✗ Error!
         
-        // IDataProcessor es contravariante
-        // IDataProcessor<EntityBase<int>> baseProcessor = GetBaseProcessor();
-        // IDataProcessor<Post> postProcessor = baseProcessor; // ✓ Válido
+        // Para que funcionara, Result<T> tendría que ser:
+        // 1. Una interfaz: interface IResult<out T> { T Value { get; } }
+        // 2. O usar conversiones explícitas
         
-        // IRepository es invariante (tiene métodos con T como entrada y salida)
-        // IRepository<Post> postRepo = GetPostRepository();
-        // IRepository<EntityBase<int>> baseRepo = postRepo; // ✗ NO válido
+        // En la práctica, esto rara vez es un problema porque:
+        // - Usamos Result<T> para manejar errores, no para polimorfismo
+        // - Los repositorios trabajan con tipos concretos
+    }
+
+    /// <summary>
+    /// Ejemplo de cómo SÍ funciona la covarianza con interfaces puras.
+    /// </summary>
+    public static void WorkingCovarianceWithInterfaces()
+    {
+        // IEnumerable<out T> es covariante
+        IEnumerable<string> strings = new List<string> { "a", "b" };
+        IEnumerable<object> objects = strings; // ✓ Funciona!
+        
+        // Func<out TResult> es covariante en TResult
+        Func<string> getString = () => "hello";
+        Func<object> getObject = getString; // ✓ Funciona!
+        
+        // IReadOnlyList<out T> es covariante
+        IReadOnlyList<string> readOnlyStrings = new List<string> { "x", "y" };
+        IReadOnlyList<object> readOnlyObjects = readOnlyStrings; // ✓ Funciona!
     }
 }
