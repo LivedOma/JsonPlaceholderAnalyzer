@@ -3,18 +3,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace JsonPlaceholderAnalyzer.Application.Configuration;
 
-/// <summary>
-/// Extensiones para registrar servicios de la capa Application.
-/// </summary>
 public static class ServiceExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        // NotificationService debe ser Singleton para que todos compartan la misma instancia
+        // Servicios singleton
         services.AddSingleton<NotificationService>();
         
-        // DataFilterService 
+        // Servicios scoped
         services.AddScoped<DataFilterService>();
+        services.AddScoped<ResponseMappingService>();
+        services.AddScoped<QueryService>();
         
         // Servicios de entidades
         services.AddScoped<UserService>();

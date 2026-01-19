@@ -1,11 +1,12 @@
 ﻿using JsonPlaceholderAnalyzer.Application.Configuration;
+using JsonPlaceholderAnalyzer.Application.DTOs;
 using JsonPlaceholderAnalyzer.Application.Services;
 using JsonPlaceholderAnalyzer.Console.Handlers;
 using JsonPlaceholderAnalyzer.Infrastructure.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 Console.WriteLine("╔═══════════════════════════════════════════════════╗");
-Console.WriteLine("║   JSONPlaceholder - Application Services Demo     ║");
+Console.WriteLine("║   JSONPlaceholder - DTOs & Pattern Matching Demo  ║");
 Console.WriteLine("╚═══════════════════════════════════════════════════╝");
 Console.WriteLine();
 
@@ -19,208 +20,215 @@ var serviceProvider = services.BuildServiceProvider();
 
 // Obtener servicios
 var notificationService = serviceProvider.GetRequiredService<NotificationService>();
+var queryService = serviceProvider.GetRequiredService<QueryService>();
+var mappingService = serviceProvider.GetRequiredService<ResponseMappingService>();
 var userService = serviceProvider.GetRequiredService<UserService>();
 var postService = serviceProvider.GetRequiredService<PostService>();
-var todoService = serviceProvider.GetRequiredService<TodoService>();
-var albumService = serviceProvider.GetRequiredService<AlbumService>();
 
-// Crear manejador de eventos
 using var eventHandlers = new ConsoleEventHandlers(notificationService);
 
 // ═══════════════════════════════════════════════════════════════
-// DEMO 1: UserService
+// DEMO 1: Paginación con Records
 // ═══════════════════════════════════════════════════════════════
 Console.WriteLine("\n═══════════════════════════════════════════════════");
-Console.WriteLine("👤 USER SERVICE DEMO");
+Console.WriteLine("📄 DEMO 1: Paginación con Records");
 Console.WriteLine("═══════════════════════════════════════════════════");
 
-Console.WriteLine("\n1. Getting user summary...");
-var userSummaryResult = await userService.GetUserSummaryAsync();
-if (userSummaryResult.IsSuccess)
+var paginationRequest = new PaginationRequest { Page = 1, PageSize = 5 };
+
+// Usando deconstrucción
+var (page, pageSize) = paginationRequest;
+Console.WriteLine($"\n  PaginationRequest deconstruido: Page={page}, PageSize={pageSize}");
+
+// Query con paginación
+var queryRequest = new QueryRequest
 {
-    var summary = userSummaryResult.Value!;
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Total Users: {summary.TotalUsers}");
-    Console.WriteLine($"   ✓ Unique Companies: {summary.UniqueCompanies}");
-    Console.WriteLine($"   ✓ Unique Cities: {summary.UniqueCities}");
-    Console.WriteLine($"   ✓ Users with Website: {summary.UsersWithWebsite}");
-    Console.WriteLine($"   ✓ Users with Phone: {summary.UsersWithPhone}");
-    Console.ResetColor();
-}
-
-Console.WriteLine("\n2. Finding user by username 'Bret'...");
-var bretResult = await userService.GetByUsernameAsync("Bret");
-if (bretResult.IsSuccess)
-{
-    Console.ForegroundColor = ConsoleColor.Cyan;
-    Console.WriteLine($"   ✓ Found: {bretResult.Value!.Name}");
-    Console.WriteLine($"     Email: {bretResult.Value.Email}");
-    Console.WriteLine($"     Company: {bretResult.Value.Company.Name}");
-    Console.ResetColor();
-}
-
-// ═══════════════════════════════════════════════════════════════
-// DEMO 2: PostService
-// ═══════════════════════════════════════════════════════════════
-Console.WriteLine("\n═══════════════════════════════════════════════════");
-Console.WriteLine("📝 POST SERVICE DEMO");
-Console.WriteLine("═══════════════════════════════════════════════════");
-
-Console.WriteLine("\n1. Getting post statistics...");
-var postStatsResult = await postService.GetStatisticsAsync();
-if (postStatsResult.IsSuccess)
-{
-    var stats = postStatsResult.Value!;
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Total Posts: {stats.TotalPosts}");
-    Console.WriteLine($"   ✓ Total Words: {stats.TotalWords:N0}");
-    Console.WriteLine($"   ✓ Average Words/Post: {stats.AverageWordsPerPost:F1}");
-    Console.WriteLine($"   ✓ Longest Post: #{stats.LongestPost?.Id} ({stats.LongestPost?.WordCount} words)");
-    Console.WriteLine($"   ✓ Shortest Post: #{stats.ShortestPost?.Id} ({stats.ShortestPost?.WordCount} words)");
-    Console.ResetColor();
-}
-
-Console.WriteLine("\n2. Getting post #1 with comments...");
-var postWithCommentsResult = await postService.GetWithCommentsAsync(1);
-if (postWithCommentsResult.IsSuccess)
-{
-    var data = postWithCommentsResult.Value!;
-    Console.ForegroundColor = ConsoleColor.Cyan;
-    Console.WriteLine($"   ✓ Post: {data.Post.ShortTitle}");
-    Console.WriteLine($"   ✓ Comments: {data.CommentCount}");
-    
-    foreach (var comment in data.Comments.Take(2))
-    {
-        Console.WriteLine($"     - {comment.ShortName} ({comment.Email})");
-    }
-    Console.ResetColor();
-}
-
-// ═══════════════════════════════════════════════════════════════
-// DEMO 3: TodoService
-// ═══════════════════════════════════════════════════════════════
-Console.WriteLine("\n═══════════════════════════════════════════════════");
-Console.WriteLine("✅ TODO SERVICE DEMO");
-Console.WriteLine("═══════════════════════════════════════════════════");
-
-Console.WriteLine("\n1. Getting todo statistics...");
-var todoStatsResult = await todoService.GetStatisticsAsync();
-if (todoStatsResult.IsSuccess)
-{
-    var stats = todoStatsResult.Value!;
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Total Todos: {stats.Total}");
-    Console.WriteLine($"   ✓ Completed: {stats.Completed} ({stats.CompletionRate:F1}%)");
-    Console.WriteLine($"   ✓ Pending: {stats.Pending}");
-    Console.WriteLine($"   ✓ High Priority: {stats.HighPriority}");
-    Console.WriteLine($"   ✓ Medium Priority: {stats.MediumPriority}");
-    Console.WriteLine($"   ✓ Low Priority: {stats.LowPriority}");
-    Console.ResetColor();
-    
-    Console.WriteLine("\n   Top 3 users by todo count:");
-    foreach (var (userId, userStats) in stats.TodosPerUser.OrderByDescending(x => x.Value.Total).Take(3))
-    {
-        Console.WriteLine($"     User #{userId}: {userStats.Total} todos ({userStats.CompletionRate:F0}% complete)");
-    }
-}
-
-Console.WriteLine("\n2. Toggling todo #1...");
-var toggleResult = await todoService.ToggleCompletedAsync(1);
-if (toggleResult.IsSuccess)
-{
-    Console.ForegroundColor = ConsoleColor.Yellow;
-    Console.WriteLine($"   ✓ Todo #{toggleResult.Value!.Id}: {toggleResult.Value.Status}");
-    Console.ResetColor();
-}
-
-// ═══════════════════════════════════════════════════════════════
-// DEMO 4: AlbumService
-// ═══════════════════════════════════════════════════════════════
-Console.WriteLine("\n═══════════════════════════════════════════════════");
-Console.WriteLine("📸 ALBUM SERVICE DEMO");
-Console.WriteLine("═══════════════════════════════════════════════════");
-
-Console.WriteLine("\n1. Getting album statistics...");
-var albumStatsResult = await albumService.GetStatisticsAsync();
-if (albumStatsResult.IsSuccess)
-{
-    var stats = albumStatsResult.Value!;
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Total Albums: {stats.TotalAlbums}");
-    Console.WriteLine($"   ✓ Estimated Total Photos: {stats.EstimatedTotalPhotos:N0}");
-    Console.WriteLine($"   ✓ Average Albums/User: {stats.AverageAlbumsPerUser:F1}");
-    Console.ResetColor();
-}
-
-Console.WriteLine("\n2. Getting album #1 with photos...");
-var albumWithPhotosResult = await albumService.GetWithPhotosAsync(1);
-if (albumWithPhotosResult.IsSuccess)
-{
-    var album = albumWithPhotosResult.Value!;
-    Console.ForegroundColor = ConsoleColor.Cyan;
-    Console.WriteLine($"   ✓ Album: {album.Title}");
-    Console.WriteLine($"   ✓ Photos: {album.PhotoCount}");
-    
-    foreach (var photo in album.Photos.Take(3))
-    {
-        Console.WriteLine($"     - {photo.Title[..Math.Min(40, photo.Title.Length)]}...");
-    }
-    Console.ResetColor();
-}
-
-// ═══════════════════════════════════════════════════════════════
-// DEMO 5: Create/Update/Delete (Simulated)
-// ═══════════════════════════════════════════════════════════════
-Console.WriteLine("\n═══════════════════════════════════════════════════");
-Console.WriteLine("🔄 CRUD OPERATIONS DEMO (Simulated)");
-Console.WriteLine("═══════════════════════════════════════════════════");
-
-Console.WriteLine("\n1. Creating a new todo...");
-var newTodo = new JsonPlaceholderAnalyzer.Domain.Entities.Todo
-{
-    Id = 0,
-    UserId = 1,
-    Title = "Learn C# services pattern",
-    Completed = false
+    Pagination = paginationRequest,
+    Sort = new SortRequest { SortBy = "name", Descending = false }
 };
 
-var createResult = await todoService.CreateAsync(newTodo);
-if (createResult.IsSuccess)
+Console.WriteLine("\n  Consultando usuarios (página 1, 5 por página, ordenados por nombre)...");
+var usersQueryResult = await queryService.QueryUsersAsync(queryRequest);
+
+if (usersQueryResult.IsSuccess)
 {
+    var response = usersQueryResult.Value!;
+    
     Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Created todo #{createResult.Value!.Id}");
+    Console.WriteLine($"\n  ✓ Resultados:");
+    Console.WriteLine($"    Total: {response.TotalItems} usuarios");
+    Console.WriteLine($"    Páginas: {response.TotalPages}");
+    Console.WriteLine($"    Página actual: {response.Page}");
+    Console.WriteLine($"    ¿Tiene siguiente?: {response.HasNextPage}");
     Console.ResetColor();
+    
+    Console.WriteLine("\n  Usuarios en esta página:");
+    foreach (var user in response.Items)
+    {
+        Console.WriteLine($"    - {user.DisplayName} | {user.City} | {user.CompanyName}");
+    }
 }
 
-Console.WriteLine("\n2. Updating the todo...");
-var todoToUpdate = createResult.Value!;
-var updatedTodo = new JsonPlaceholderAnalyzer.Domain.Entities.Todo
+// ═══════════════════════════════════════════════════════════════
+// DEMO 2: Pattern Matching para clasificación
+// ═══════════════════════════════════════════════════════════════
+Console.WriteLine("\n═══════════════════════════════════════════════════");
+Console.WriteLine("🔍 DEMO 2: Pattern Matching - Clasificación de entidades");
+Console.WriteLine("═══════════════════════════════════════════════════");
+
+var allUsersResult = await userService.GetAllAsync();
+var allPostsResult = await postService.GetAllAsync();
+
+if (allUsersResult.IsSuccess && allPostsResult.IsSuccess)
 {
-    Id = todoToUpdate.Id,
-    UserId = todoToUpdate.UserId,
-    Title = "Learn C# services pattern - Updated!",
-    Completed = true
+    var entities = new List<object>();
+    entities.AddRange(allUsersResult.Value!.Take(2));
+    entities.AddRange(allPostsResult.Value!.Take(2));
+    
+    Console.WriteLine("\n  Clasificando entidades con Pattern Matching:");
+    
+    foreach (var entity in entities)
+    {
+        var classification = mappingService.ClassifyEntity(entity);
+        var priority = mappingService.GetDisplayPriority(entity);
+        
+        Console.WriteLine($"    [{priority}] {classification}");
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEMO 3: Pattern Matching con Property Patterns
+// ═══════════════════════════════════════════════════════════════
+Console.WriteLine("\n═══════════════════════════════════════════════════");
+Console.WriteLine("🏷️ DEMO 3: Property Patterns en Posts");
+Console.WriteLine("═══════════════════════════════════════════════════");
+
+if (allPostsResult.IsSuccess)
+{
+    var posts = allPostsResult.Value!.Take(10);
+    var postDtos = mappingService.MapPosts(posts, allUsersResult.Value).ToList();
+    
+    Console.WriteLine("\n  Clasificando posts por longitud (relational patterns):");
+    
+    foreach (var post in postDtos)
+    {
+        var formatted = mappingService.FormatForConsole(post);
+        
+        // Pattern matching con switch expression
+        var lengthCategory = post.Length switch
+        {
+            PostLength.Short => "(Corto)",
+            PostLength.Medium => "(Medio)",
+            PostLength.Long => "(Largo)",
+            PostLength.VeryLong => "(Muy largo)",
+            _ => "(Desconocido)"
+        };
+        
+        Console.WriteLine($"    {formatted} {lengthCategory} [{post.WordCount} palabras]");
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEMO 4: Records con with-expressions
+// ═══════════════════════════════════════════════════════════════
+Console.WriteLine("\n═══════════════════════════════════════════════════");
+Console.WriteLine("📝 DEMO 4: Records y with-expressions");
+Console.WriteLine("═══════════════════════════════════════════════════");
+
+var originalRequest = new QueryRequest
+{
+    Pagination = new PaginationRequest { Page = 1, PageSize = 10 },
+    Sort = new SortRequest { SortBy = "title" },
+    SearchTerm = "original"
 };
 
-var updateResult = await todoService.UpdateAsync(updatedTodo);
-if (updateResult.IsSuccess)
+Console.WriteLine($"\n  Request original: Page={originalRequest.Pagination.Page}, Search='{originalRequest.SearchTerm}'");
+
+// with-expression para crear copia modificada
+var modifiedRequest = originalRequest with
 {
-    Console.ForegroundColor = ConsoleColor.Yellow;
-    Console.WriteLine($"   ✓ Updated todo #{updateResult.Value!.Id}: {updateResult.Value.Status}");
+    Pagination = originalRequest.Pagination with { Page = 2 },
+    SearchTerm = "modificado"
+};
+
+Console.WriteLine($"  Request modificado: Page={modifiedRequest.Pagination.Page}, Search='{modifiedRequest.SearchTerm}'");
+Console.WriteLine($"  ¿Son iguales?: {originalRequest == modifiedRequest}");
+
+// ═══════════════════════════════════════════════════════════════
+// DEMO 5: Query con búsqueda y ordenamiento
+// ═══════════════════════════════════════════════════════════════
+Console.WriteLine("\n═══════════════════════════════════════════════════");
+Console.WriteLine("🔎 DEMO 5: Query con búsqueda y ordenamiento");
+Console.WriteLine("═══════════════════════════════════════════════════");
+
+var searchQuery = new QueryRequest
+{
+    Pagination = new PaginationRequest { Page = 1, PageSize = 5 },
+    Sort = new SortRequest { SortBy = "wordcount", Descending = true },
+    SearchTerm = "qui"
+};
+
+Console.WriteLine($"\n  Buscando posts con 'qui', ordenados por palabras (desc)...");
+var searchResult = await queryService.QueryPostsAsync(searchQuery);
+
+if (searchResult.IsSuccess)
+{
+    var response = searchResult.Value!;
+    var summary = mappingService.GenerateSummary(response);
+    
+    Console.ForegroundColor = ConsoleColor.Cyan;
+    Console.WriteLine($"\n  {summary}");
     Console.ResetColor();
+    
+    foreach (var post in response.Items)
+    {
+        Console.WriteLine($"    [{post.WordCount} palabras] {post.Title[..Math.Min(50, post.Title.Length)]}...");
+    }
 }
 
-Console.WriteLine("\n3. Deleting the todo...");
-var deleteResult = await todoService.DeleteAsync(updatedTodo.Id);
-if (deleteResult.IsSuccess)
+// ═══════════════════════════════════════════════════════════════
+// DEMO 6: Filtrado de Todos con Pattern Matching
+// ═══════════════════════════════════════════════════════════════
+Console.WriteLine("\n═══════════════════════════════════════════════════");
+Console.WriteLine("✅ DEMO 6: Filtrado de Todos");
+Console.WriteLine("═══════════════════════════════════════════════════");
+
+var todoQuery = new QueryRequest
 {
-    Console.ForegroundColor = ConsoleColor.Red;
-    Console.WriteLine($"   ✓ Deleted todo #{updatedTodo.Id}");
-    Console.ResetColor();
+    Pagination = new PaginationRequest { Page = 1, PageSize = 10 },
+    Sort = new SortRequest { SortBy = "completed" }
+};
+
+// Solo pendientes
+Console.WriteLine("\n  Todos pendientes:");
+var pendingResult = await queryService.QueryTodosAsync(todoQuery, completedFilter: false);
+if (pendingResult.IsSuccess)
+{
+    foreach (var todo in pendingResult.Value!.Items.Take(5))
+    {
+        var color = mappingService.GetStatusColor(todo);
+        Console.ForegroundColor = color;
+        Console.WriteLine($"    {todo.StatusEmoji} {todo.Title[..Math.Min(40, todo.Title.Length)]}...");
+        Console.ResetColor();
+    }
+}
+
+// Solo completados
+Console.WriteLine("\n  Todos completados:");
+var completedResult = await queryService.QueryTodosAsync(todoQuery, completedFilter: true);
+if (completedResult.IsSuccess)
+{
+    foreach (var todo in completedResult.Value!.Items.Take(5))
+    {
+        var color = mappingService.GetStatusColor(todo);
+        Console.ForegroundColor = color;
+        Console.WriteLine($"    {todo.StatusEmoji} {todo.Title[..Math.Min(40, todo.Title.Length)]}...");
+        Console.ResetColor();
+    }
 }
 
 Console.WriteLine("\n═══════════════════════════════════════════════════");
-Console.WriteLine("✅ All service demos completed!");
+Console.WriteLine("✅ All demos completed!");
 Console.WriteLine("═══════════════════════════════════════════════════");
 
 Console.WriteLine("\nPress any key to exit...");
