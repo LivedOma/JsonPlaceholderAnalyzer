@@ -13,8 +13,14 @@ public static class ServiceExtensions
         // NotificationService debe ser Singleton para que todos compartan la misma instancia
         services.AddSingleton<NotificationService>();
         
-        // DataFilterService puede ser Scoped o Transient
+        // DataFilterService 
         services.AddScoped<DataFilterService>();
+        
+        // Servicios de entidades
+        services.AddScoped<UserService>();
+        services.AddScoped<PostService>();
+        services.AddScoped<TodoService>();
+        services.AddScoped<AlbumService>();
         
         return services;
     }
