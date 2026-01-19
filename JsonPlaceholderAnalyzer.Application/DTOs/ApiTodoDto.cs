@@ -1,10 +1,7 @@
 using System.Text.Json.Serialization;
 
-namespace JsonPlaceholderAnalyzer.Infrastructure.ApiClient.Dtos;
+namespace JsonPlaceholderAnalyzer.Application.DTOs;
 
-/// <summary>
-/// DTO para deserializar todos desde la API.
-/// </summary>
 public record ApiTodoDto(
     [property: JsonPropertyName("id")] int Id,
     [property: JsonPropertyName("userId")] int UserId,

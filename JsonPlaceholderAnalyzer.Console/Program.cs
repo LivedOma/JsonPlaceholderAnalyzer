@@ -1,9 +1,13 @@
-﻿using JsonPlaceholderAnalyzer.Domain.Interfaces;
+﻿using JsonPlaceholderAnalyzer.Application.Configuration;
+using JsonPlaceholderAnalyzer.Application.Services;
+using JsonPlaceholderAnalyzer.Console.Handlers;
+using JsonPlaceholderAnalyzer.Domain.Entities;
+using JsonPlaceholderAnalyzer.Domain.Interfaces;
 using JsonPlaceholderAnalyzer.Infrastructure.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 Console.WriteLine("╔═══════════════════════════════════════════════════╗");
-Console.WriteLine("║   JSONPlaceholder Repository Test                 ║");
+Console.WriteLine("║   JSONPlaceholder - Events & Delegates Demo       ║");
 Console.WriteLine("╚═══════════════════════════════════════════════════╝");
 Console.WriteLine();
 
@@ -11,174 +15,208 @@ Console.WriteLine();
 var services = new ServiceCollection();
 services.AddJsonPlaceholderApiClient();
 services.AddRepositories();
+services.AddApplicationServices();
 
 var serviceProvider = services.BuildServiceProvider();
 
-// Prueba de UserRepository
-Console.WriteLine("═══════════════════════════════════════════════════");
-Console.WriteLine("📋 USER REPOSITORY TEST");
-Console.WriteLine("═══════════════════════════════════════════════════");
-
+// Obtener servicios
+var notificationService = serviceProvider.GetRequiredService<NotificationService>();
 var userRepo = serviceProvider.GetRequiredService<IUserRepository>();
+var postRepo = serviceProvider.GetRequiredService<IPostRepository>();
+var todoRepo = serviceProvider.GetRequiredService<ITodoRepository>();
+var filterService = serviceProvider.GetRequiredService<DataFilterService>();
 
-// Obtener todos los usuarios
-Console.WriteLine("\n1. Getting all users...");
+// Crear manejador de eventos de consola
+using var eventHandlers = new ConsoleEventHandlers(notificationService);
+eventHandlers.VerboseMode = true; // Activar modo verbose para ver más detalles
+
+// ═══════════════════════════════════════════════════════════════
+// DEMO 1: Eventos de notificación simple
+// ═══════════════════════════════════════════════════════════════
+Console.WriteLine("\n═══════════════════════════════════════════════════");
+Console.WriteLine("📢 DEMO 1: Notificaciones simples");
+Console.WriteLine("═══════════════════════════════════════════════════");
+
+notificationService.OnNotification("¡Bienvenido al sistema de eventos!");
+notificationService.SendMessage("Este es un mensaje simple");
+notificationService.SendColoredMessage("Este mensaje es colorido", ConsoleColor.Magenta);
+
+// ═══════════════════════════════════════════════════════════════
+// DEMO 2: Eventos de API
+// ═══════════════════════════════════════════════════════════════
+Console.WriteLine("\n═══════════════════════════════════════════════════");
+Console.WriteLine("🌐 DEMO 2: Eventos de API (cargando usuarios)");
+Console.WriteLine("═══════════════════════════════════════════════════");
+
 var usersResult = await userRepo.GetAllAsync();
 if (usersResult.IsSuccess)
 {
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Found {usersResult.Value?.Count() ?? 0} users");
-    Console.ResetColor();
-    
-    foreach (var user in usersResult.Value?.Take(3) ?? [])
-    {
-        Console.WriteLine($"   - {user.DisplayName} | {user.Email}");
-        Console.WriteLine($"     📍 {user.Address.FullAddress}");
-        Console.WriteLine($"     🏢 {user.Company.Name}");
-    }
+    Console.WriteLine($"\n  ✓ Loaded {usersResult.Value?.Count() ?? 0} users");
 }
 
-// Buscar por username
-Console.WriteLine("\n2. Getting user by username 'Bret'...");
-var bretResult = await userRepo.GetByUsernameAsync("Bret");
-if (bretResult.IsSuccess)
-{
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Found: {bretResult.Value?.Name}");
-    Console.ResetColor();
-}
-
-// Buscar por ciudad
-Console.WriteLine("\n3. Getting users from city 'Gwenborough'...");
-var cityResult = await userRepo.GetByCityAsync("Gwenborough");
-if (cityResult.IsSuccess)
-{
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Found {cityResult.Value?.Count() ?? 0} users");
-    Console.ResetColor();
-}
-
-// Prueba de PostRepository
+// ═══════════════════════════════════════════════════════════════
+// DEMO 3: Eventos de entidades (CRUD simulado)
+// ═══════════════════════════════════════════════════════════════
 Console.WriteLine("\n═══════════════════════════════════════════════════");
-Console.WriteLine("📝 POST REPOSITORY TEST");
+Console.WriteLine("📝 DEMO 3: Eventos de entidades");
 Console.WriteLine("═══════════════════════════════════════════════════");
 
-var postRepo = serviceProvider.GetRequiredService<IPostRepository>();
-
-// Obtener posts de un usuario
-Console.WriteLine("\n1. Getting posts for user #1...");
-var userPostsResult = await postRepo.GetByUserIdAsync(1);
-if (userPostsResult.IsSuccess)
+// Simular creación de entidad
+var newTodo = new Todo
 {
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Found {userPostsResult.Value?.Count() ?? 0} posts");
-    Console.ResetColor();
-    
-    foreach (var post in userPostsResult.Value?.Take(2) ?? [])
-    {
-        Console.WriteLine($"   - [{post.Id}] {post.ShortTitle}");
-        Console.WriteLine($"     Words: {post.WordCount}");
-    }
-}
+    Id = 0,
+    UserId = 1,
+    Title = "Learn about delegates and events",
+    Completed = false
+};
 
-// Buscar posts por título
-Console.WriteLine("\n2. Searching posts with 'qui'...");
-var searchResult = await postRepo.SearchByTitleAsync("qui");
-if (searchResult.IsSuccess)
+notificationService.OnEntityCreated(newTodo, 201);
+
+// Simular actualización
+var updatedTodo = new Todo
 {
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Found {searchResult.Value?.Count() ?? 0} matching posts");
-    Console.ResetColor();
-}
+    Id = 201,
+    UserId = 1,
+    Title = "Learn about delegates and events",
+    Completed = true
+};
 
-// Obtener comentarios de un post
-Console.WriteLine("\n3. Getting comments for post #1...");
-var commentsResult = await postRepo.GetCommentsForPostAsync(1);
-if (commentsResult.IsSuccess)
-{
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Found {commentsResult.Value?.Count() ?? 0} comments");
-    Console.ResetColor();
-    
-    foreach (var comment in commentsResult.Value?.Take(2) ?? [])
-    {
-        Console.WriteLine($"   - {comment.ShortName}");
-        Console.WriteLine($"     By: {comment.Email}");
-    }
-}
+notificationService.OnEntityUpdated(updatedTodo, newTodo);
 
-// Prueba de TodoRepository
+// Simular eliminación
+notificationService.OnEntityDeleted(201, "Todo");
+
+// ═══════════════════════════════════════════════════════════════
+// DEMO 4: Uso de Func<T> y predicados para filtrado
+// ═══════════════════════════════════════════════════════════════
 Console.WriteLine("\n═══════════════════════════════════════════════════");
-Console.WriteLine("✅ TODO REPOSITORY TEST");
+Console.WriteLine("🔍 DEMO 4: Filtrado con Func<T, bool>");
 Console.WriteLine("═══════════════════════════════════════════════════");
 
-var todoRepo = serviceProvider.GetRequiredService<ITodoRepository>();
-
-// Estadísticas de todos
-Console.WriteLine("\n1. Getting todo statistics...");
-var allTodos = await todoRepo.GetAllAsync();
-var completedTodos = await todoRepo.GetCompletedAsync();
-var pendingTodos = await todoRepo.GetPendingAsync();
-
-if (allTodos.IsSuccess)
+var todosResult = await todoRepo.GetAllAsync();
+if (todosResult.IsSuccess)
 {
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Total: {allTodos.Value?.Count() ?? 0}");
-    Console.WriteLine($"   ✓ Completed: {completedTodos.Value?.Count() ?? 0}");
-    Console.WriteLine($"   ✓ Pending: {pendingTodos.Value?.Count() ?? 0}");
-    Console.ResetColor();
-}
-
-// Simular toggle de un todo
-Console.WriteLine("\n2. Toggling todo #1 completion status...");
-var todoResult = await todoRepo.GetByIdAsync(1);
-if (todoResult.IsSuccess)
-{
-    Console.WriteLine($"   Before: {todoResult.Value?.Status}");
-    var toggleResult = await todoRepo.ToggleCompletedAsync(1);
-    if (toggleResult.IsSuccess)
-    {
-        Console.WriteLine($"   After: {toggleResult.Value?.Status}");
-    }
-}
-
-// Prueba de AlbumRepository
-Console.WriteLine("\n═══════════════════════════════════════════════════");
-Console.WriteLine("📸 ALBUM REPOSITORY TEST");
-Console.WriteLine("═══════════════════════════════════════════════════");
-
-var albumRepo = serviceProvider.GetRequiredService<IAlbumRepository>();
-
-// Obtener álbumes de un usuario
-Console.WriteLine("\n1. Getting albums for user #1...");
-var albumsResult = await albumRepo.GetByUserIdAsync(1);
-if (albumsResult.IsSuccess)
-{
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Found {albumsResult.Value?.Count() ?? 0} albums");
-    Console.ResetColor();
-}
-
-// Obtener álbum con fotos
-Console.WriteLine("\n2. Getting album #1 with photos...");
-var albumWithPhotosResult = await albumRepo.GetWithPhotosAsync(1);
-if (albumWithPhotosResult.IsSuccess)
-{
-    var album = albumWithPhotosResult.Value!;
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"   ✓ Album: {album.Title}");
-    Console.WriteLine($"   ✓ Photos: {album.PhotoCount}");
-    Console.ResetColor();
+    var todos = todosResult.Value!.ToList();
     
-    foreach (var photo in album.Photos.Take(3))
+    Console.WriteLine("\n  Filtering completed todos using Func<Todo, bool>...");
+    
+    // Usando Func<Todo, bool> como predicado
+    Func<Todo, bool> isCompleted = todo => todo.Completed;
+    
+    var completedTodos = filterService.Filter(
+        todos, 
+        isCompleted,
+        onItemFiltered: todo => { /* callback opcional por cada item filtrado */ }
+    );
+    
+    Console.WriteLine($"\n  Found {completedTodos.Count()} completed todos");
+    
+    // Filtrar con lambda directa
+    Console.WriteLine("\n  Filtering todos with 'et' in title...");
+    var todosWithEt = filterService.Filter(
+        todos,
+        t => t.Title.Contains("et", StringComparison.OrdinalIgnoreCase)
+    );
+    Console.WriteLine($"  Found {todosWithEt.Count()} todos with 'et' in title");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEMO 5: Transformación con Func<TSource, TResult>
+// ═══════════════════════════════════════════════════════════════
+Console.WriteLine("\n═══════════════════════════════════════════════════");
+Console.WriteLine("🔄 DEMO 5: Transformación con Func<T, TResult>");
+Console.WriteLine("═══════════════════════════════════════════════════");
+
+if (usersResult.IsSuccess)
+{
+    var users = usersResult.Value!.ToList();
+    
+    // Transformar usuarios a un formato simple
+    Func<User, string> toDisplayString = user => $"{user.Name} ({user.Email})";
+    
+    var displayStrings = filterService.Transform(users, toDisplayString);
+    
+    Console.WriteLine("\n  Users transformed to display strings:");
+    foreach (var display in displayStrings.Take(3))
     {
-        Console.WriteLine($"   - [{photo.Id}] {photo.Title[..Math.Min(40, photo.Title.Length)]}...");
+        Console.WriteLine($"    - {display}");
     }
 }
 
-Console.WriteLine();
+// ═══════════════════════════════════════════════════════════════
+// DEMO 6: Agrupación con Func<T, TKey>
+// ═══════════════════════════════════════════════════════════════
+Console.WriteLine("\n═══════════════════════════════════════════════════");
+Console.WriteLine("📊 DEMO 6: Agrupación con Func<T, TKey>");
 Console.WriteLine("═══════════════════════════════════════════════════");
-Console.WriteLine("✓ All repository tests completed!");
+
+if (todosResult.IsSuccess)
+{
+    var todos = todosResult.Value!.ToList();
+    
+    // Agrupar por UserId
+    Func<Todo, int> byUserId = todo => todo.UserId;
+    
+    var groupedByUser = filterService.GroupBy(todos, byUserId);
+    
+    Console.WriteLine("\n  Todos grouped by UserId:");
+    foreach (var group in groupedByUser.Take(3))
+    {
+        Console.WriteLine($"    User {group.Key}: {group.Value.Count} todos");
+    }
+    
+    // Agrupar por estado de completado
+    var groupedByStatus = filterService.GroupBy(todos, t => t.Completed);
+    Console.WriteLine($"\n  Completed: {groupedByStatus.GetValueOrDefault(true)?.Count ?? 0}");
+    Console.WriteLine($"  Pending: {groupedByStatus.GetValueOrDefault(false)?.Count ?? 0}");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEMO 7: ForEach con Action<T>
+// ═══════════════════════════════════════════════════════════════
+Console.WriteLine("\n═══════════════════════════════════════════════════");
+Console.WriteLine("🔁 DEMO 7: ForEach con Action<T>");
 Console.WriteLine("═══════════════════════════════════════════════════");
+
+if (usersResult.IsSuccess)
+{
+    var users = usersResult.Value!.Take(3);
+    
+    // Action<User> - no retorna nada, solo ejecuta
+    Action<User> printUser = user =>
+    {
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine($"    👤 {user.Name}");
+        Console.ResetColor();
+    };
+    
+    Console.WriteLine("\n  First 3 users:");
+    filterService.ForEach(users, printUser);
+    
+    // Action<User, int> - con índice
+    Console.WriteLine("\n  With index:");
+    filterService.ForEachWithIndex(users, (user, index) =>
+    {
+        Console.WriteLine($"    [{index + 1}] {user.Username}");
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEMO 8: Progreso con delegado personalizado
+// ═══════════════════════════════════════════════════════════════
+Console.WriteLine("\n═══════════════════════════════════════════════════");
+Console.WriteLine("⏳ DEMO 8: Barra de progreso con ProgressHandler");
+Console.WriteLine("═══════════════════════════════════════════════════\n");
+
+for (int i = 1; i <= 20; i++)
+{
+    notificationService.OnProgressUpdate(i, 20, "Processing items");
+    await Task.Delay(100); // Simular trabajo
+}
+
+Console.WriteLine("\n═══════════════════════════════════════════════════");
+Console.WriteLine("✅ All demos completed!");
+Console.WriteLine("═══════════════════════════════════════════════════");
+
 Console.WriteLine("\nPress any key to exit...");
 Console.ReadKey();

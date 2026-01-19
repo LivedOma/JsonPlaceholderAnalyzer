@@ -1,11 +1,7 @@
 using System.Text.Json.Serialization;
 
-namespace JsonPlaceholderAnalyzer.Infrastructure.ApiClient.Dtos;
+namespace JsonPlaceholderAnalyzer.Application.DTOs;
 
-/// <summary>
-/// DTO para deserializar usuarios desde la API.
-/// Demuestra: records para DTOs inmutables, atributos de JSON.
-/// </summary>
 public record ApiUserDto(
     [property: JsonPropertyName("id")] int Id,
     [property: JsonPropertyName("name")] string Name,
